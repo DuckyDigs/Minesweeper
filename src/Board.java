@@ -10,7 +10,8 @@ public class Board{
     int[][] count;                                          // generated field with surrounding mine numbers
 
     int startR, startC, minesLeft;
-    boolean[][] seen, flags;                                // U/I & solver parameters
+    public boolean[][] flags;                               // U/I & solver parameters
+    public int[][] visible;                                 // squares the user can see
 
 // CONSTRUCTORS
     public Board(){
@@ -20,9 +21,13 @@ public class Board{
         rows = r; cols = c; totalMines = m; minesLeft = m;
 
         mines = new boolean[r][c];
-        seen = new boolean[r][c];
         flags = new boolean[r][c];
         count = new int[r][c];
+        visible = new int[r][c];
+
+        for(int i = 0; i < r; i++)
+            for(int j = 0 ; j < c; j++)
+                visible[r][c] = UNSEEN;
     }
 
 // GENERATOR
@@ -82,9 +87,9 @@ public class Board{
     public boolean click(int r, int c) throws ArrayIndexOutOfBoundsException{               // represents a normal (left) click; "solves" a square
         if(mines[r][c]) return false;                           // death: hit a mine
 
-        seen[r][c] = true;
+        visible[r][c] = count[r][c];
         if(checkSolved(r, c)){                                  // auto-clearing a solved square
-            surround(r, c, CLICK);                              // disregards death condition
+            clickSurround(r, c);                              // disregards death condition
         }
         return true;
     }
@@ -99,14 +104,9 @@ public class Board{
         }
     }
 
-    void surround(int r, int c, int cmd){                                                   // function to perform a task on all surrounding squares
-        if(cmd == SEE){
-            seen[r-1][c-1] = true; seen[r-1][c] = true; seen[r-1][c+1] = true; seen[r][c-1] = true; seen[r][c+1] = true; seen[r+1][c-1] = true; seen[r+1][c] = true; seen[r+1][c+1] = true;
-        }
-        if(cmd == CLICK){
-            for(int[] i : around)
-                click(r + i[0], c + i[1]);
-        }
+    void clickSurround(int r, int c){                                                   // function to perform a task on all surrounding squares
+        for(int[] i : around)
+            click(r + i[0], c + i[1]);
     }
 
     boolean checkSolved(int r, int c) throws ArrayIndexOutOfBoundsException{                // checks if a square can be auto-cleared
@@ -120,6 +120,14 @@ public class Board{
             }
         }
         return flagged == count[r][c];
+    }
+
+    void updateVisible(){                               // potentially not needed
+        for(int i = 0; i < rows; i++){
+            for(int j = 0; j < cols; j++){
+
+            }
+        }
     }
 
 // I/O TEST
@@ -159,4 +167,6 @@ public class Board{
     public static final int NON_ZERO_OPEN = 2;          // initial square can be non-zero (but not mine)
 
     public static final int MINE = 9;                   // value of mines in count[][] array
+
+    public static final int UNSEEN = -1;                // represents an unseen square in the seen[][] array
 }
