@@ -1,4 +1,4 @@
-import java.util.*;
+import java.util.Random;
 
 public class Board{
 // GLOBAL VARIABLES
@@ -8,9 +8,10 @@ public class Board{
     public int rows, cols, totalMines;
     boolean[][] mines;                                      // basic parameters
     int[][] count;                                          // generated field with surrounding mine numbers
+    public boolean win = false;
 
     int startR, startC, minesLeft;
-    public boolean[][] flags;                               // U/I & solver parameters
+    public boolean[][] flags, solved;                       // U/I & solver parameters
     public int[][] visible;                                 // squares the user can see
 
 // CONSTRUCTORS
@@ -22,12 +23,13 @@ public class Board{
 
         mines = new boolean[r][c];
         flags = new boolean[r][c];
+        solved = new boolean[r][c];
         count = new int[r][c];
         visible = new int[r][c];
 
         for(int i = 0; i < r; i++)
             for(int j = 0 ; j < c; j++)
-                visible[r][c] = UNSEEN;
+                visible[i][j] = UNSEEN;
     }
 
 // GENERATOR
@@ -43,7 +45,7 @@ public class Board{
                 row = rand.nextInt(rows);
                 col = rand.nextInt(cols);
 
-                if(!mines[row][col] && (row!=r-1||col!=c-1) && (row!=r-1||col!=c) && (row!=r-1||col!=c+1) && (row!=r||col!=c-1) && (row!=r||col!=c) && (row!=r||col!=c+1) && (row!=r+1||col!=c-1) && (row!=r-1||col!=c) && (row!=r+1||col!=c+1)){
+                if(!mines[row][col] && (row!=r-1||col!=c-1) && (row!=r-1||col!=c) && (row!=r-1||col!=c+1) && (row!=r||col!=c-1) && (row!=r||col!=c) && (row!=r||col!=c+1) && (row!=r+1||col!=c-1) && (row!=r+1||col!=c) && (row!=r+1||col!=c+1)){
                     mines[row][col] = true;
                     minesLeft--;
                 }
@@ -63,6 +65,7 @@ public class Board{
 
         minesLeft = totalMines;
         generateCount();
+        click(r, c);
         return true;
     }
     public boolean generate(int r, int c){
@@ -85,16 +88,23 @@ public class Board{
 
 // USER INTERACTION COMMANDS
     public boolean click(int r, int c) throws ArrayIndexOutOfBoundsException{               // represents a normal (left) click; "solves" a square
-        if(mines[r][c]) return false;                           // death: hit a mine
+        if(mines[r][c])
+            return false;                                   // death: hit a mine
+        if(solved[r][c])
+            return true;                                    // skips re-checking solved squares
 
         visible[r][c] = count[r][c];
-        if(checkSolved(r, c)){                                  // auto-clearing a solved square
-            clickSurround(r, c);                              // disregards death condition
+        checkSolved(r, c);
+        if(solved[r][c]){                                   // auto-clearing a solved square
+            clickSurround(r, c);                            // disregards death condition
         }
         return true;
     }
 
     public void flag(int r, int c) throws ArrayIndexOutOfBoundsException{                   // represents an alternate (right) click
+        if(visible[r][c] != UNSEEN)
+            return;                                         // blocks flagging tiles with numbers & known tiles
+
         if(flags[r][c]){
             flags[r][c] = false;
             minesLeft++;
@@ -104,30 +114,30 @@ public class Board{
         }
     }
 
-    void clickSurround(int r, int c){                                                   // function to perform a task on all surrounding squares
+    void clickSurround(int r, int c) throws ArrayIndexOutOfBoundsException{                 // function to perform a task on all surrounding UNSOLVED squares
         for(int[] i : around)
-            click(r + i[0], c + i[1]);
+            if(r + i[0] >= 0 && c + i[1] >= 0 && r + i[0] < rows && c + i[1] < cols && visible[r + i[0]][c + i[1]] == UNSEEN){
+                click(r + i[0], c + i[1]);
+            }
     }
 
-    boolean checkSolved(int r, int c) throws ArrayIndexOutOfBoundsException{                // checks if a square can be auto-cleared
-        if(count[r][c] == 0)
-            return true;
-
+    void checkSolved(int r, int c) throws ArrayIndexOutOfBoundsException{                   // checks if a square can be auto-cleared
         int flagged = 0;
         for(int[] i : around){
-            if(flags[r + i[0]][c + i[1]] && mines[r + i[0]][c + i[1]]){
-                flagged++;
-            }
+            if(r + i[0] >= 0 && c + i[1] >= 0 && r + i[0] < rows && c + i[1] < cols)
+                if(flags[r + i[0]][c + i[1]] && mines[r + i[0]][c + i[1]])
+                    flagged++;
         }
-        return flagged == count[r][c];
+        solved[r][c] = flagged == count[r][c];
     }
 
-    void updateVisible(){                               // potentially not needed
-        for(int i = 0; i < rows; i++){
-            for(int j = 0; j < cols; j++){
+    public boolean checkWin(){                                                              // checks the win condition
+        for(int i = 0; i < rows; i++)
+            for(int j = 0; j < cols; j++)
+                if(mines[i][j] != flags[i][j])
+                    return false;
 
-            }
-        }
+        return false;
     }
 
 // I/O TEST
@@ -166,7 +176,8 @@ public class Board{
     public static final int DEFAULT = 1;                // default: initial square must be 0
     public static final int NON_ZERO_OPEN = 2;          // initial square can be non-zero (but not mine)
 
-    public static final int MINE = 9;                   // value of mines in count[][] array
+    public static final int MINE = -1;                  // value of mines in count[][] array
 
-    public static final int UNSEEN = -1;                // represents an unseen square in the seen[][] array
+    public static final int UNSEEN = -1;                // represents an unseen square in the visible[][] array
+    public static final int DEATH = -9;                 // the square you died on
 }
